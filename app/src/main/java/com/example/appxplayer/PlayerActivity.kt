@@ -1,20 +1,18 @@
 package com.example.appxplayer
 
-import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.view.View
 import android.widget.ImageView
-import android.widget.LinearLayout
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.cast.CastPlayer
 import androidx.media3.cast.SessionAvailabilityListener
-import androidx.core.view.WindowInsetsControllerCompat
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
@@ -24,7 +22,6 @@ import androidx.media3.exoplayer.ExoPlayer
 import androidx.mediarouter.app.MediaRouteButton
 import com.google.android.gms.cast.framework.CastButtonFactory
 import com.google.android.gms.cast.framework.CastContext
-
 import com.example.appxplayer.databinding.ActivityPlayerBinding
 
 private const val TAG = "PlayerActivity"
@@ -92,10 +89,12 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         setLockScreen()
     }
 
+    // FindViewById for imageViewLock
     private fun setFindViewById() {
         imageViewLock = findViewById(R.id.imageViewLock)
     }
 
+    // Initialize ExoPlayer instance and prepare media playback
     private fun initializePlayer() {
         exoPlayer = ExoPlayer.Builder(this)
             .build()
@@ -106,12 +105,12 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
                     .setMaxVideoSizeSd()
                     .build()
 
+                // Set up media item with subtitle configuration
                 val mediaItem = MediaItem.Builder()
                     .setUri(getString(R.string.media_url_mp4))
                     .setMimeType(MimeTypes.APPLICATION_MP4)
                     .build()
 
-                // Add subtitle configuration
                 val subtitle = MediaItem.SubtitleConfiguration.Builder(Uri.parse(getString(R.string.subtitle_url)))
                     .setMimeType(MimeTypes.TEXT_VTT) // Change as per your subtitle format
                     .setLanguage("en") // Change as per your subtitle language
@@ -122,6 +121,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
                     .setSubtitleConfigurations(listOf(subtitle))
                     .build()
 
+                // Add media item to player, set playback settings
                 player.addMediaItem(mediaItemWithSubtitle)
                 player.playWhenReady = playWhenReady
                 player.seekTo(mediaItemIndex, playbackPosition)
@@ -129,6 +129,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
                 player.prepare()
             }
 
+        // Set click listener for fullscreen button
         viewBinding.videoView.setFullscreenButtonClickListener {
             Log.e(TAG, "isFullscreen: $it")
             if (it) {
@@ -138,9 +139,11 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
             }
         }
 
+        // If already in fullscreen, open fullscreen mode
         if (isFullscreen) openFullscreen()
     }
 
+    // Release ExoPlayer instance
     private fun releasePlayer() {
         viewBinding.videoView.setFullscreenButtonClickListener(null)
         player?.run {
@@ -153,6 +156,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         player = null
     }
 
+    // Start CastPlayer when Cast session is available
     private fun startCastPlayer() {
         castPlayer.setMediaItem(MediaItem.Builder().setUri(getString(R.string.media_url_mp4)).setMimeType(MimeTypes.APPLICATION_MP4).build())
         castPlayer.prepare()
@@ -160,6 +164,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         exoPlayer?.stop()
     }
 
+    // Start ExoPlayer when Cast session is unavailable
     private fun startExoPlayer() {
         exoPlayer?.setMediaItem(MediaItem.Builder().setUri(getString(R.string.media_url_mp4)).setMimeType(MimeTypes.APPLICATION_MP4).build())
         exoPlayer?.prepare()
@@ -167,7 +172,8 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         castPlayer.stop()
     }
 
-    @SuppressLint("UnsafeOptInUsageError")
+    // Listener for Cast session availability changes
+
     override fun onCastSessionAvailable() {
         startCastPlayer()
     }
@@ -176,7 +182,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         startExoPlayer()
     }
 
-    @SuppressLint("SourceLockedOrientationActivity")
+    // Enter fullscreen mode
     private fun openFullscreen() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE
         val params: FrameLayout.LayoutParams = viewBinding.videoView.layoutParams as FrameLayout.LayoutParams
@@ -187,6 +193,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         isFullscreen = true
     }
 
+    // Exit fullscreen mode
     private fun closeFullscreen() {
         requestedOrientation = ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED
         val params: FrameLayout.LayoutParams = viewBinding.videoView.layoutParams as FrameLayout.LayoutParams
@@ -197,18 +204,21 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         isFullscreen = false
     }
 
+    // Hide system UI (status bar and navigation bar)
     private fun hideSystemUi() {
         supportActionBar?.hide()
         windowInsetsController.hide(WindowInsetsCompat.Type.systemBars())
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
     }
 
+    // Show system UI (status bar and navigation bar)
     private fun showSystemUi() {
         supportActionBar?.show()
         windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
     }
 
+    // Set lock screen functionality
     private fun setLockScreen() {
         imageViewLock.setOnClickListener {
             if (!isLock) {
@@ -231,6 +241,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         }
     }
 
+    // Lock or unlock screen controls based on lock status
     private fun lockScreen(lock: Boolean) {
         if (lock) {
             // Hide all controls except the lock icon
@@ -251,8 +262,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         }
     }
 
-
-
+    // Save instance state for orientation changes
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt(STATE_RESUME_WINDOW, player?.currentMediaItemIndex ?: 0)
         outState.putLong(STATE_RESUME_POSITION, player?.currentPosition ?: 0)
