@@ -16,4 +16,8 @@
     <style name="CustomControllerTheme" parent="AlertDialog.AppCompat.Light">
         <item name="colorPrimary">@color/purple_500</item>
     </style>
+    <style name="ClickableView">
+        <item name="colorControlHighlight">@android:color/darker_gray</item>
+        <item name="android:background">?selectableItemBackgroundBorderless</item>
+    </style>
 </resources>

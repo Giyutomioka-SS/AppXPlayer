@@ -5,6 +5,9 @@ import android.content.pm.ActivityInfo
 import android.net.Uri
 import android.os.Bundle
 import android.util.Log
+import android.view.View
+import android.widget.ImageView
+import android.widget.LinearLayout
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
@@ -45,6 +48,8 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
     private var mediaItemIndex = 0
     private var playbackPosition = 0L
     private var isFullscreen = false
+    private var isLock = false
+    private lateinit var imageViewLock: ImageView
     private val playbackStateListener: Player.Listener = PlayerEvent.playbackStateListener(TAG)
     private val windowInsetsController by lazy {
         WindowInsetsControllerCompat(window, window.decorView)
@@ -54,6 +59,7 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(viewBinding.root)
+        setFindViewById()
 
         // Initialize CastContext and CastPlayer
         castContext = CastContext.getSharedInstance(this)
@@ -82,6 +88,12 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         } else {
             showSystemUi()
         }
+
+        setLockScreen()
+    }
+
+    private fun setFindViewById() {
+        imageViewLock = findViewById(R.id.imageViewLock)
     }
 
     private fun initializePlayer() {
@@ -196,6 +208,50 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
         windowInsetsController.show(WindowInsetsCompat.Type.systemBars())
         windowInsetsController.systemBarsBehavior = WindowInsetsControllerCompat.BEHAVIOR_DEFAULT
     }
+
+    private fun setLockScreen() {
+        imageViewLock.setOnClickListener {
+            if (!isLock) {
+                imageViewLock.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        applicationContext,
+                        R.drawable.ic_baseline_lock
+                    )
+                )
+            } else {
+                imageViewLock.setImageDrawable(
+                    ContextCompat.getDrawable(
+                        applicationContext,
+                        R.drawable.ic_baseline_lock_open
+                    )
+                )
+            }
+            isLock = !isLock
+            lockScreen(isLock)
+        }
+    }
+
+    private fun lockScreen(lock: Boolean) {
+        if (lock) {
+            // Hide all controls except the lock icon
+            viewBinding.videoView.useController = false
+            imageViewLock.visibility = View.VISIBLE
+            viewBinding.exoCast.visibility = View.INVISIBLE
+            if (!isFullscreen) {
+                hideSystemUi()
+            }
+        } else {
+            // Show all controls including the lock icon
+            viewBinding.videoView.useController = true
+            imageViewLock.visibility = View.VISIBLE
+            viewBinding.exoCast.visibility = View.VISIBLE
+            if (!isFullscreen) {
+                showSystemUi()
+            }
+        }
+    }
+
+
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putInt(STATE_RESUME_WINDOW, player?.currentMediaItemIndex ?: 0)
