@@ -1,0 +1,9 @@
+<!-- res/menu/menu_player.xml -->
+<menu xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto">
+  <item
+      android:id="@+id/media_route_menu_item"
+      android:title="Cast"
+      app:actionProviderClass="com.example.appxplayer.CustomCastProvider"
+      app:showAsAction="always"/>
+</menu>

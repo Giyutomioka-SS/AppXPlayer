@@ -46,16 +46,20 @@ dependencies {
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
     implementation(libs.androidx.constraintlayout)
-
-    // Media3 dependencies
+    implementation(libs.exoplayer.core)
+    implementation(libs.exoplayer.ui)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.mediarouter)
     implementation(libs.androidx.media3.exoplayer)
     implementation(libs.androidx.media3.ui)
     implementation(libs.androidx.media3.datasource)
     implementation(libs.androidx.media3.session)
+    implementation(libs.play.services.cast.framework)
+    implementation(libs.androidx.media3.cast)
 
-    // Other dependencies
-    implementation(libs.androidx.activity.ktx)
+    // Testing dependencies
     testImplementation(libs.junit.v4132)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 }
+

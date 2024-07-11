@@ -2,17 +2,26 @@ package com.example.appxplayer
 
 import android.annotation.SuppressLint
 import android.content.pm.ActivityInfo
+import android.net.Uri
 import android.os.Bundle
 import android.util.Log
 import android.widget.FrameLayout
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.media3.cast.CastPlayer
+import androidx.media3.cast.SessionAvailabilityListener
 import androidx.core.view.WindowInsetsControllerCompat
+import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
+import androidx.media3.common.util.UnstableApi
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.mediarouter.app.MediaRouteButton
+import com.google.android.gms.cast.framework.CastButtonFactory
+import com.google.android.gms.cast.framework.CastContext
+
 import com.example.appxplayer.databinding.ActivityPlayerBinding
 
 private const val TAG = "PlayerActivity"
@@ -21,12 +30,16 @@ private const val STATE_RESUME_POSITION = "resumePosition"
 private const val STATE_PLAYER_FULLSCREEN = "playerFullscreen"
 private const val STATE_PLAYER_PLAYING = "playerOnPlay"
 
-class PlayerActivity : AppCompatActivity() {
+@UnstableApi
+class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
 
     private val viewBinding by lazy(LazyThreadSafetyMode.NONE) {
         ActivityPlayerBinding.inflate(layoutInflater)
     }
 
+    private lateinit var castContext: CastContext
+    private lateinit var castPlayer: CastPlayer
+    private var exoPlayer: ExoPlayer? = null
     private var player: Player? = null
     private var playWhenReady = true
     private var mediaItemIndex = 0
@@ -37,12 +50,46 @@ class PlayerActivity : AppCompatActivity() {
         WindowInsetsControllerCompat(window, window.decorView)
     }
 
+    @Suppress("DEPRECATION")
+    override fun onCreate(savedInstanceState: Bundle?) {
+        super.onCreate(savedInstanceState)
+        setContentView(viewBinding.root)
+
+        // Initialize CastContext and CastPlayer
+        castContext = CastContext.getSharedInstance(this)
+        castPlayer = CastPlayer(castContext)
+        castPlayer.setSessionAvailabilityListener(this)
+
+        Log.d(TAG, "Cast initialization status: ${castContext.castState}")
+
+        // Set up MediaRouteButton
+        findViewById<MediaRouteButton>(R.id.exo_cast)?.apply {
+            CastButtonFactory.setUpMediaRouteButton(context, this)
+            dialogFactory = CustomCastThemeFactory()
+        }
+
+        // Set the action bar color
+        supportActionBar?.setBackgroundDrawable(
+            ContextCompat.getDrawable(this, R.color.purple_700)
+        )
+
+        // Restore state from savedInstanceState if available
+        if (savedInstanceState != null) {
+            mediaItemIndex = savedInstanceState.getInt(STATE_RESUME_WINDOW)
+            playbackPosition = savedInstanceState.getLong(STATE_RESUME_POSITION)
+            isFullscreen = savedInstanceState.getBoolean(STATE_PLAYER_FULLSCREEN)
+            playWhenReady = savedInstanceState.getBoolean(STATE_PLAYER_PLAYING)
+        } else {
+            showSystemUi()
+        }
+    }
+
     private fun initializePlayer() {
-        player = ExoPlayer.Builder(this)
+        exoPlayer = ExoPlayer.Builder(this)
             .build()
-            .also { exoPlayer ->
-                viewBinding.videoView.player = exoPlayer
-                exoPlayer.trackSelectionParameters = exoPlayer.trackSelectionParameters
+            .also { player ->
+                viewBinding.videoView.player = player
+                player.trackSelectionParameters = player.trackSelectionParameters
                     .buildUpon()
                     .setMaxVideoSizeSd()
                     .build()
@@ -51,11 +98,23 @@ class PlayerActivity : AppCompatActivity() {
                     .setUri(getString(R.string.media_url_mp4))
                     .setMimeType(MimeTypes.APPLICATION_MP4)
                     .build()
-                exoPlayer.addMediaItem(mediaItem)
-                exoPlayer.playWhenReady = playWhenReady
-                exoPlayer.seekTo(mediaItemIndex, playbackPosition)
-                exoPlayer.addListener(playbackStateListener)
-                exoPlayer.prepare()
+
+                // Add subtitle configuration
+                val subtitle = MediaItem.SubtitleConfiguration.Builder(Uri.parse(getString(R.string.subtitle_url)))
+                    .setMimeType(MimeTypes.TEXT_VTT) // Change as per your subtitle format
+                    .setLanguage("en") // Change as per your subtitle language
+                    .setSelectionFlags(C.SELECTION_FLAG_DEFAULT)
+                    .build()
+
+                val mediaItemWithSubtitle = mediaItem.buildUpon()
+                    .setSubtitleConfigurations(listOf(subtitle))
+                    .build()
+
+                player.addMediaItem(mediaItemWithSubtitle)
+                player.playWhenReady = playWhenReady
+                player.seekTo(mediaItemIndex, playbackPosition)
+                player.addListener(playbackStateListener)
+                player.prepare()
             }
 
         viewBinding.videoView.setFullscreenButtonClickListener {
@@ -80,6 +139,29 @@ class PlayerActivity : AppCompatActivity() {
             release()
         }
         player = null
+    }
+
+    private fun startCastPlayer() {
+        castPlayer.setMediaItem(MediaItem.Builder().setUri(getString(R.string.media_url_mp4)).setMimeType(MimeTypes.APPLICATION_MP4).build())
+        castPlayer.prepare()
+        viewBinding.videoView.player = castPlayer
+        exoPlayer?.stop()
+    }
+
+    private fun startExoPlayer() {
+        exoPlayer?.setMediaItem(MediaItem.Builder().setUri(getString(R.string.media_url_mp4)).setMimeType(MimeTypes.APPLICATION_MP4).build())
+        exoPlayer?.prepare()
+        viewBinding.videoView.player = exoPlayer
+        castPlayer.stop()
+    }
+
+    @SuppressLint("UnsafeOptInUsageError")
+    override fun onCastSessionAvailable() {
+        startCastPlayer()
+    }
+
+    override fun onCastSessionUnavailable() {
+        startExoPlayer()
     }
 
     @SuppressLint("SourceLockedOrientationActivity")
@@ -123,25 +205,6 @@ class PlayerActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        setContentView(viewBinding.root)
-
-        // Set the action bar color
-        supportActionBar?.setBackgroundDrawable(
-            ContextCompat.getDrawable(this, R.color.purple_700)
-        )
-
-        if (savedInstanceState != null) {
-            mediaItemIndex = savedInstanceState.getInt(STATE_RESUME_WINDOW)
-            playbackPosition = savedInstanceState.getLong(STATE_RESUME_POSITION)
-            isFullscreen = savedInstanceState.getBoolean(STATE_PLAYER_FULLSCREEN)
-            playWhenReady = savedInstanceState.getBoolean(STATE_PLAYER_PLAYING)
-        } else {
-            showSystemUi()
-        }
-    }
-
     public override fun onStart() {
         super.onStart()
         initializePlayer()
@@ -161,13 +224,5 @@ class PlayerActivity : AppCompatActivity() {
     public override fun onStop() {
         super.onStop()
         releasePlayer()
-    }
-
-    override fun onBackPressed() {
-        if (isFullscreen) {
-            closeFullscreen()
-            return
-        }
-        super.onBackPressed()
     }
 }
