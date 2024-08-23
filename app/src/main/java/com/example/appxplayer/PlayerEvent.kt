@@ -14,7 +14,6 @@ object PlayerEvent {
                 ExoPlayer.STATE_ENDED -> "ExoPlayer.STATE_ENDED     -"
                 else -> "UNKNOWN_STATE             -"
             }
-            hfu2hoifi3fpo
             Log.d(tag, "changed state to $stateString")
         }
     }
