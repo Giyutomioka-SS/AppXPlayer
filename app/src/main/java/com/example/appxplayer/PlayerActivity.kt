@@ -282,6 +282,10 @@ class PlayerActivity : AppCompatActivity(), SessionAvailabilityListener {
             initializePlayer()
         }
     }
+    efuheuhfi
+    iwfoi
+
+    ehfeji
 
     public override fun onPause() {
         super.onPause()
